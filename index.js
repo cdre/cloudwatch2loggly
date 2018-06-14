@@ -1,15 +1,12 @@
-/** 
- * To setup your encrypted Loggly Customer Token inside the script use the following steps 
- * 1. Create a KMS key - http://docs.aws.amazon.com/kms/latest/developerguide/create-keys.html
- * 2. Encrypt the Loggly Customer Token using the AWS CLI
- *        aws kms encrypt --key-id alias/<your KMS key arn> --plaintext "<your loggly customer token>"
- * 3. Copy the base-64 encoded, encrypted token from step 2's CLI output (CiphertextBlob attribute) and 
- *    paste it in place of the 'your KMS encypted key' below in line 27
- */
-
 var AWS = require('aws-sdk'),
     http = require('http'),
     zlib = require('zlib');
+
+// Uses the current region for KMS encryption/decryption
+AWS.config.update({ region: process.env.AWS_REGION });
+
+const encrypted = process.env['LOGGLY_TOKEN'];
+let decrypted;
 
 const hostName = (process.env['LOGGLY_URL'].trim() === "") ? 'logs-01.loggly.com' : process.env['LOGGLY_URL'].trim();
 var tags = (process.env['LOGGLY_TAGS'].trim() === "") ? 'CloudWatch2Loggly' : process.env['LOGGLY_TAGS'].split(',').map(item => { return item.trim() });
@@ -25,26 +22,11 @@ var cloudWatchLogs = new AWS.CloudWatchLogs({
     apiVersion: '2014-03-28'
 });
 
-// use KMS to decrypt customer token
-var decryptParams = {
-    CiphertextBlob: new Buffer('your KMS encypted key', 'base64')
-};
-
 var kms = new AWS.KMS({
     apiVersion: '2014-11-01'
 });
 
-kms.decrypt(decryptParams, function (error, data) {
-    if (error) {
-        logglyConfiguration.tokenInitError = error;
-        console.log(error);
-    } else {
-        logglyConfiguration.customerToken = data.Plaintext.toString('ascii');
-    }
-});
-
-// entry point
-exports.handler = function (event, context) {
+function processEvent(event, context, callback) {
     var payload = new Buffer(event.awslogs.data, 'base64');
 
     zlib.gunzip(payload, function (error, result) {
@@ -60,8 +42,9 @@ exports.handler = function (event, context) {
         }
     });
 
-    // converts the event to a valid JSON object with the sufficient infomation required
+    // converts the event to a valid JSON object with the sufficient information required
     function parseEvent(logEvent, logGroupName, logStreamName) {
+        console.log("logEvent: " + JSON.stringify(logEvent));
         return {
             // remove '\n' character at the end of the event
             message: logEvent.message.trim(),
@@ -131,5 +114,27 @@ exports.handler = function (event, context) {
             console.log(ex.message);
             context.fail(ex.message);
         }
+    }
+}
+
+// entry point
+exports.handler = (event, context, callback) => {
+    if(decrypted) {
+        processEvent(event, context, callback);
+    } else {
+        // Decrypt code should run once and variables stored outside of the function
+        // handler so that these are decrypted once per container
+        // use KMS to decrypt customer token
+        const kms = new AWS.KMS();
+        kms.decrypt({ CiphertextBlob: new Buffer(encrypted, 'base64') }, (err, data) => {
+            if (err) {
+                logglyConfiguration.tokenInitError = error;
+                console.log('Decrypt error:', err);
+                return callback(err);
+            }
+            decrypted = data.Plaintext.toString('ascii');
+            logglyConfiguration.customerToken = decrypted;
+            processEvent(event, context, callback);
+        });
     }
 };

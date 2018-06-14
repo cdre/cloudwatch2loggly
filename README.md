@@ -47,7 +47,8 @@ using the command line tools.
     * **Handler*:** *index.handler*
     * Environment Variables:
       * LOGGLY_URL - Optional. Defaults to 'logs-01.loggly.com'.
-      * LOGGLY_TAGS - Optional. Defaults to 'CloudWatch2Loggly'. Allows for custom tags. Separate multiple tags with a comma (,). 
+      * LOGGLY_TAGS - Optional. Defaults to 'CloudWatch2Loggly'. Allows for custom tags. Separate multiple tags with a comma (,).
+      * LOGGLY_TOKEN - Required. Use the KMS key created previously to encrypt the Loggly Customer Token.
     * Set Role : *cloudwatch-full-access*
     * Set Timeout to 2 minutes
   3. Go to your Lamda function and select the "Event sources" tab
