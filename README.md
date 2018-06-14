@@ -45,6 +45,8 @@ using the command line tools.
     * **Name:** *cloudwatch2loggly*
     * Upload lambda function (zip file you made above.)
     * **Handler*:** *index.handler*
+    * Environment Variables:
+      * LOGGLY_URL - Optional. Defaults to 'logs-01.loggly.com'.
     * Set Role : *cloudwatch-full-access*
     * Set Timeout to 2 minutes
   3. Go to your Lamda function and select the "Event sources" tab
