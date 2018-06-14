@@ -12,12 +12,13 @@ var AWS = require('aws-sdk'),
     zlib = require('zlib');
 
 const hostName = (process.env['LOGGLY_URL'].trim() === "") ? 'logs-01.loggly.com' : process.env['LOGGLY_URL'].trim();
+var tags = (process.env['LOGGLY_TAGS'].trim() === "") ? 'CloudWatch2Loggly' : process.env['LOGGLY_TAGS'].split(',').map(item => { return item.trim() });
 
 // loggly url, token and tag configuration
 // user need to edit while uploading code via blueprint
 var logglyConfiguration = {
     hostName: hostName,
-    tags: 'CloudWatch2Loggly'
+    tags: tags
 };
 
 var cloudWatchLogs = new AWS.CloudWatchLogs({
